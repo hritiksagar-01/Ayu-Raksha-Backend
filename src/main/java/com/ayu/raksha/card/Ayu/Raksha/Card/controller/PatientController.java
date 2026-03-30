@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/patients", "/patients"})
+@RequestMapping({ "/api/patients", "/patients" })
 public class PatientController {
 
     private final UserRepository userRepository;
@@ -37,9 +37,9 @@ public class PatientController {
     private final MedicalRecordRepository medicalRecordRepository;
 
     public PatientController(UserRepository userRepository, S3Service s3Service,
-                             AppointmentRepository appointmentRepository,
-                             AlertRepository alertRepository,
-                             MedicalRecordRepository medicalRecordRepository) {
+            AppointmentRepository appointmentRepository,
+            AlertRepository alertRepository,
+            MedicalRecordRepository medicalRecordRepository) {
         this.userRepository = userRepository;
         this.s3Service = s3Service;
         this.appointmentRepository = appointmentRepository;
@@ -63,7 +63,8 @@ public class PatientController {
                         if (user.getDateOfBirth() != null) {
                             age = java.time.Period.between(user.getDateOfBirth(), java.time.LocalDate.now()).getYears();
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                     patientMap.put("age", age);
                     patientMap.put("gender", user.getGender());
                     patientMap.put("email", user.getEmail());
@@ -78,9 +79,12 @@ public class PatientController {
     // Helper: ensure that patients can only access their own data
     private boolean isSelfOrPrivileged(String requestedPatientId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
-        boolean isPatient = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).anyMatch(a -> a.equals("ROLE_PATIENT"));
-        if (!isPatient) return true; // doctor/uploader/admin handled by SecurityConfig, allow
+        if (auth == null)
+            return false;
+        boolean isPatient = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("ROLE_PATIENT"));
+        if (!isPatient)
+            return true; // doctor/uploader/admin handled by SecurityConfig, allow
         // Patient: must match their own patientId
         Object principal = auth.getPrincipal();
         String email = null;
@@ -91,7 +95,8 @@ public class PatientController {
         } else if (principal instanceof com.ayu.raksha.card.Ayu.Raksha.Card.models.User u) {
             email = u.getEmail();
         }
-        if (email == null) return false;
+        if (email == null)
+            return false;
         return userRepository.findByEmail(email)
                 .map(u -> requestedPatientId.equals(u.getPatientId()))
                 .orElse(false);
@@ -110,7 +115,9 @@ public class PatientController {
                     profile.put("email", user.getEmail());
                     profile.put("phone", user.getPhone());
                     profile.put("gender", user.getGender());
-                    profile.put("dateOfBirth", user.getDateOfBirth() != null ? user.getDateOfBirth().format(DateTimeFormatter.ISO_DATE) : null);
+                    profile.put("dateOfBirth",
+                            user.getDateOfBirth() != null ? user.getDateOfBirth().format(DateTimeFormatter.ISO_DATE)
+                                    : null);
                     profile.put("patientCode", user.getPatientId());
                     return ResponseEntity.ok(Map.of("success", true, "data", profile));
                 })
@@ -126,8 +133,10 @@ public class PatientController {
         return userRepository.findByPatientId(patientId).map((User patient) -> {
             // Counts
             long appointmentsUpcoming = appointmentRepository
-                    .countByPatientAndStatusAndDateGreaterThanEqual(patient, AppointmentStatus.SCHEDULED, LocalDate.now());
-            long alertsActive = alertRepository.countByPatientAndDateGreaterThanEqual(patient, LocalDate.now().minusDays(30));
+                    .countByPatientAndStatusAndDateGreaterThanEqual(patient, AppointmentStatus.SCHEDULED,
+                            LocalDate.now());
+            long alertsActive = alertRepository.countByPatientAndDateGreaterThanEqual(patient,
+                    LocalDate.now().minusDays(30));
             var recent = medicalRecordRepository.findTop5ByPatientOrderByDateDescIdDesc(patient);
             int reportsRecent = recent.size();
 
@@ -152,7 +161,8 @@ public class PatientController {
             data.put("counts", counts);
             data.put("latestRecord", latestRecord);
             return ResponseEntity.ok(Map.of("success", true, "data", data));
-        }).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "error", "Patient not found")));
+        }).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("success", false, "error", "Patient not found")));
     }
 
     @GetMapping("/{patientId}/appointments")
@@ -162,16 +172,14 @@ public class PatientController {
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
             @RequestParam(required = false, defaultValue = "1") int page,
-            @RequestParam(required = false, defaultValue = "10") int size
-    ) {
+            @RequestParam(required = false, defaultValue = "10") int size) {
         if (!isSelfOrPrivileged(patientId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "error", "Access denied"));
         }
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "data", java.util.List.of(),
-                "message", "OK"
-        ));
+                "message", "OK"));
     }
 
     @GetMapping("/{patientId}/alerts")
@@ -179,22 +187,19 @@ public class PatientController {
             @PathVariable String patientId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false, defaultValue = "1") int page,
-            @RequestParam(required = false, defaultValue = "10") int size
-    ) {
+            @RequestParam(required = false, defaultValue = "10") int size) {
         if (!isSelfOrPrivileged(patientId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "error", "Access denied"));
         }
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "data", java.util.List.of()
-        ));
+                "data", java.util.List.of()));
     }
 
     @GetMapping("/{patientId}/records")
     public ResponseEntity<?> listRecords(
             @PathVariable String patientId,
-            @RequestParam(required = false, defaultValue = "5") int limit
-    ) {
+            @RequestParam(required = false, defaultValue = "5") int limit) {
         System.out.println("=== GET /api/patients/" + patientId + "/records called ===");
         System.out.println("Limit: " + limit);
 
@@ -206,7 +211,8 @@ public class PatientController {
         return userRepository.findByPatientId(patientId).map((User patient) -> {
             System.out.println("Patient found: " + patient.getEmail() + " (ID: " + patient.getId() + ")");
 
-            List<MedicalRecord> list = limit > 0 ? medicalRecordRepository.findTop5ByPatientOrderByDateDescIdDesc(patient)
+            List<MedicalRecord> list = limit > 0
+                    ? medicalRecordRepository.findTop5ByPatientOrderByDateDescIdDesc(patient)
                     : medicalRecordRepository.findByPatientOrderByDateDescIdDesc(patient);
 
             System.out.println("Found " + list.size() + " medical records in database");
@@ -234,7 +240,7 @@ public class PatientController {
 
             // If no database records, check S3 and create records from files
             if (data.isEmpty()) {
-                System.out.println("No database records found, checking S3...");
+                System.out.println("No database records foundd, checking S3...");
                 List<S3Object> s3Files = s3Service.listFilesForPatient(patientId);
                 System.out.println("Found " + s3Files.size() + " files in S3 for patient " + patientId);
 
@@ -242,7 +248,8 @@ public class PatientController {
                     String key = s3Object.key();
                     String filename = key.substring(key.lastIndexOf('/') + 1);
 
-                    // Extract type from path (e.g., "029451840406/blood-report/file.pdf" -> "blood-report")
+                    // Extract type from path (e.g., "029451840406/blood-report/file.pdf" ->
+                    // "blood-report")
                     String type = "Medical Document";
                     String[] pathParts = key.split("/");
                     if (pathParts.length >= 2) {
@@ -275,8 +282,10 @@ public class PatientController {
             data.sort((a, b) -> {
                 String dateA = (String) a.get("date");
                 String dateB = (String) b.get("date");
-                if (dateA == null) return 1;
-                if (dateB == null) return -1;
+                if (dateA == null)
+                    return 1;
+                if (dateB == null)
+                    return -1;
                 return dateB.compareTo(dateA);
             });
 
@@ -289,7 +298,8 @@ public class PatientController {
             return ResponseEntity.ok(Map.of("success", true, "data", data));
         }).orElseGet(() -> {
             System.err.println("Patient not found with patientCode: " + patientId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "error", "Patient not found"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "error", "Patient not found"));
         });
     }
 
@@ -356,13 +366,12 @@ public class PatientController {
                     "data", Map.of(
                             "created", created,
                             "skipped", skipped,
-                            "total", s3Files.size()
-                    ),
-                    "message", "S3 files synced to database"
-            ));
+                            "total", s3Files.size()),
+                    "message", "S3 files synced to database"));
         }).orElseGet(() -> {
             System.err.println("Patient not found with patientCode: " + patientId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "error", "Patient not found"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "error", "Patient not found"));
         });
     }
 }
