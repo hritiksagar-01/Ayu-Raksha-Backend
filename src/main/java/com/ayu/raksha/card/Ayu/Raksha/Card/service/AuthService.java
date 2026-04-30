@@ -42,7 +42,7 @@ public class AuthService {
     @Value("${app.google.client-id}")
     private String googleClientId;
 
-    // Generate a unique 12-digit numeric patient IDdsfdsf
+    // Generate a unique 12-digit numeric patient IDdsfdsfdfd
     private String generateUniquePatientId() {
         for (int i = 0; i < 20; i++) { // try up to 20 times
             long min = 100_000_000_000L; // 12 digits minimum
