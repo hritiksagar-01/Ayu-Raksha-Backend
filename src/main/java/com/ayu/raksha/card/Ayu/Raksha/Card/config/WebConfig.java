@@ -19,7 +19,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://13.233.98.216:3000",
                         "http://13.201.93.117:3000",
                         "https://ayuraksha.pllatinum.me",
-                        "http://3.111.35.95"
+                        "http://3.111.35.95",
+                        "http://3.111.35.95:3000"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
